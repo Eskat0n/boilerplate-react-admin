@@ -1,0 +1,47 @@
+name: Publish package
+
+on:
+  workflow_dispatch:
+
+env:
+  VERSION: 0.0.1-build.${{ github.run_number }}
+
+jobs:
+  build:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          registry-url: "https://registry.npmjs.org/"
+          scope: "@codeparts"
+
+      - name: Cache Node.js modules
+        uses: actions/cache@v4
+        with:
+          path: "**/node_modules"
+          key: ${{ runner.os }}-modules-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm config set commit-hooks false
+          npm config set git-tag-version false
+          npm version $VERSION
+          npm publish --access public
